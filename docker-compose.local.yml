@@ -5,11 +5,17 @@ services:
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "123456"
+      MSSQL_SA_PASSWORD: "Your_password123"
     ports:
       - "1433:1433"
     volumes:
       - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"SELECT 1\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   minio:
     image: minio/minio:latest
@@ -33,7 +39,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
-      ConnectionStrings__DefaultConnection: "Server=HOANGNGUYEN\\SQLEXPRESS,1433;Database=DoAnHotelParkingDb;User Id=sa;Password=123456;Encrypt=False;TrustServerCertificate=True;"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=DoAnHotelParkingDb;User Id=sa;Password=Your_password123;Encrypt=False;TrustServerCertificate=True;"
       JwtSettings__Issuer: "DoAn.HotelParking"
       JwtSettings__Audience: "DoAn.HotelParking.Client"
       JwtSettings__SecretKey: "DoAn.HotelParking.Super.Secret.Key.2026"
@@ -53,8 +59,10 @@ services:
     volumes:
       - ./firebase:/app/firebase
     depends_on:
-      - sqlserver
-      - minio
+      sqlserver:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
   web:
     build:

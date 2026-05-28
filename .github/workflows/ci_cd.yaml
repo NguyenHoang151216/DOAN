@@ -1,0 +1,73 @@
+name: CI CD Local Packaging
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  ci:
+    name: CI - Build and Test
+    runs-on: ubuntu-latest
+
+    env:
+      VSTEST_CONNECTION_TIMEOUT: 600
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore backend
+        working-directory: Backend
+        run: dotnet restore DoAn.HotelParking.sln
+
+      - name: Build backend
+        working-directory: Backend
+        run: dotnet build DoAn.HotelParking.sln --configuration Release --no-restore
+
+      - name: Test backend
+        working-directory: Backend
+        run: dotnet test tests/DoAn.HotelParking.UnitTests/DoAn.HotelParking.UnitTests.csproj --configuration Release --no-build --logger trx
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        working-directory: Flutter_App-main
+        run: flutter pub get
+
+      - name: Flutter analyze
+        working-directory: Flutter_App-main
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Flutter test
+        working-directory: Flutter_App-main
+        run: flutter test
+
+  cd:
+    name: CD - Docker Packaging
+    runs-on: ubuntu-latest
+    needs: ci
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v5
+
+      - name: Build backend Docker image
+        run: docker build -t hotel-api:local ./Backend
+
+      - name: Build Flutter web Docker image
+        run: docker build -t hotel-web:local ./Flutter_App-main --build-arg API_BASE_URL=http://localhost:5146
+
+      - name: Show packaged Docker images
+        run: docker images | grep hotel
