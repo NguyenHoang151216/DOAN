@@ -11,11 +11,14 @@ jobs:
     name: CI - Build and Test
     runs-on: ubuntu-latest
 
+    env:
+      VSTEST_CONNECTION_TIMEOUT: 300
+
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
-      - name: Setup .NET
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
@@ -30,7 +33,7 @@ jobs:
 
       - name: Test backend
         working-directory: Backend
-        run: dotnet test DoAn.HotelParking.sln --configuration Release --no-build
+        run: dotnet test tests/DoAn.HotelParking.UnitTests/DoAn.HotelParking.UnitTests.csproj --configuration Release --no-build --logger trx
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -57,7 +60,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
       - name: Build backend Docker image
         run: docker build -t hotel-api:local ./Backend
@@ -65,5 +68,5 @@ jobs:
       - name: Build Flutter web Docker image
         run: docker build -t hotel-web:local ./Flutter_App-main --build-arg API_BASE_URL=http://localhost:5146
 
-      - name: Show Docker images
+      - name: Show packaged Docker images
         run: docker images | grep hotel
