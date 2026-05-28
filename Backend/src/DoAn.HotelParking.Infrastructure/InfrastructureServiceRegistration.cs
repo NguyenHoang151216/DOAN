@@ -54,7 +54,13 @@ public static class InfrastructureServiceRegistration
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(connectionString, sql =>
-                sql.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+            {
+                sql.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName);
+                sql.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null);
+            }));
 
         services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
         services.Configure<MinioSettings>(configuration.GetSection("Minio"));
